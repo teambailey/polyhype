@@ -1,1 +1,1 @@
-# polyhype
+polyhype
