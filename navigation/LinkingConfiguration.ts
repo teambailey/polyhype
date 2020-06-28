@@ -6,9 +6,9 @@ export default {
     screens: {
       Root: {
         screens: {
-          TabOne: {
+          PloyHype: {
             screens: {
-              TabOneScreen: 'one',
+              PolyHypeScreen: 'one',
             },
           },
           TabTwo: {
