@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Audio } from 'expo-av';
@@ -14,10 +14,31 @@ const PolyHype = () => {
   const [recordingPerms, upRecordingPerms] = useState<boolean>(false);
   const [playing, udPlaying] = useState<boolean>(false);
 
+  const DEFAULT_AUDIO_SETTINGS = {
+    allowsRecordingIOS: true,
+    interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DO_NOT_MIX,
+    playsInSilentModeIOS: true,
+    // shouldDuckAndroid: true,
+    interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
+    playThroughEarpieceAndroid: true,
+    // staysActiveInBackground: true,
+    volume: 1.0,
+  };
+
+  const RECORDED_AUDIO_SETTINGS = {
+    // isLooping: true,
+    isMuted: false,
+    volume: 1.0,
+    rate: 1.0,
+    // shouldCorrectPitch: true,
+  };
+
   const getPerms = async () => {
-    const response = await Permissions?.askAsync(Permissions.AUDIO_RECORDING);
-    const granted = response?.status === 'granted';
-    upRecordingPerms(granted);
+    if (!recordingPerms) {
+      const response = await Permissions?.askAsync(Permissions.AUDIO_RECORDING);
+      const granted = response?.status === 'granted';
+      upRecordingPerms(granted);
+    }
   };
 
   // _updateScreenForSoundStatus = status => {
@@ -64,10 +85,10 @@ const PolyHype = () => {
 
   const playPause = async () => {
     if (playing) {
-      await s.pauseAsync();
+      await s?.pauseAsync();
       udPlaying(false);
     } else {
-      await s.playAsync();
+      await s?.playAsync();
       udPlaying(true);
     }
   };
@@ -82,26 +103,18 @@ const PolyHype = () => {
       s.unloadAsync();
       s.setOnPlaybackStatusUpdate(null);
       udSound(null);
+      udPlaying(false);
     }
 
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: true,
-      interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DO_NOT_MIX,
-      playsInSilentModeIOS: true,
-      shouldDuckAndroid: true,
-      interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
-      playThroughEarpieceAndroid: false,
-      staysActiveInBackground: true,
-    });
+    // await Audio.setAudioModeAsync(DEFAULT_AUDIO_SETTINGS);
 
-    recording?.setOnRecordingStatusUpdate(null);
+    // recording?.setOnRecordingStatusUpdate(null);
   };
 
   const startRecord = async () => {
     udLoading(true);
     // full stop of playback
     await stopPlayback();
-    udLoading(false);
 
     // get perms
     await getPerms();
@@ -129,7 +142,6 @@ const PolyHype = () => {
     udLoading(true);
     // full stop of playback
     await stopPlayback();
-    udLoading(false);
 
     try {
       await recording.stopAndUnloadAsync();
@@ -141,39 +153,46 @@ const PolyHype = () => {
     // const info = await FileSystem.getInfoAsync(recording.getURI());
     // console.log(`FILE INFO: ${JSON.stringify(info)}`);
 
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: false,
-      interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DO_NOT_MIX,
-      playsInSilentModeIOS: true,
-      // playsInSilentLockedModeIOS: true,
-      shouldDuckAndroid: true,
-      interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
-      playThroughEarpieceAndroid: false,
-      staysActiveInBackground: true,
-    });
+    await Audio.setAudioModeAsync(DEFAULT_AUDIO_SETTINGS);
 
-    const { sound } = await recording.createNewLoadedSoundAsync({
-      isLooping: true,
-      isMuted: false,
-      volume: 1.0,
-      rate: 1.0,
-      shouldCorrectPitch: true,
-    });
+    const { sound } = await recording.createNewLoadedSoundAsync(
+      RECORDED_AUDIO_SETTINGS
+    );
 
     await udSound(sound);
     udLoading(false);
   };
 
-  const airHorn = async () => {
+  const defaultSoundObj = async () => {
     const soundObject = new Audio.Sound();
     try {
       await soundObject?.loadAsync(require('../assets/sounds/air-horn.mp3'));
-      await soundObject?.playAsync();
-      // Your sound is playing!
+      await Audio.setAudioModeAsync(DEFAULT_AUDIO_SETTINGS);
+      udSound(soundObject);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const airHorn = async () => {
+    // await stopAudio();
+    // await stopPlayback();
+    try {
+      // await defaultSoundObj();
+      await s?.setPositionAsync(0);
+      s?.playAsync();
     } catch (error) {
       console.log('error happening');
     }
+    udLoading(false);
   };
+
+  useEffect(() => {
+    console.log('firing');
+    // get perms
+    getPerms();
+    defaultSoundObj();
+  }, []);
 
   return (
     <>
